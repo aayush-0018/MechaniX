@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?   @unique
+  role      String   @default("customer") // "worker" or "customer"
+  location  String?
+  latitude    Float?
+  longitude   Float?
+  skills    String[]
+  isAvailable Boolean @default(true)
+  createdAt DateTime @default(now())
+
+   // NextAuth fields
+  image         String?
+  emailVerified DateTime?
+
+  bookingsAsCustomer Booking[] @relation("CustomerBookings")
+  bookingsAsWorker   Booking[] @relation("WorkerBookings")
+  reviewsGiven    Review[] @relation("CustomerReviews") // Reviews written by the customer
+  reviewsReceived Review[] @relation("WorkerReviews")  // Reviews received by the worker
+}
+
+model Booking {
+  id          String   @id @default(uuid())
+  customerId  String
+  workerId    String
+  status      String   @default("pending") // pending, accepted, completed, cancelled
+  bookedAt    DateTime @default(now())
+  amount      Float    @default(0)
+  mediaUrls   String[] 
+  customer  User @relation("CustomerBookings", fields: [customerId], references: [id])
+  worker    User @relation("WorkerBookings", fields: [workerId], references: [id])
+
+  payment Payment?
+  review  Review?
+}
+
+
+model Payment {
+  id         String   @id @default(uuid())
+  bookingId  String   @unique
+  amount     Float
+  status     String   @default("pending") // pending, paid, failed
+  createdAt  DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  bookingId  String   @unique
+  workerId   String
+  customerId String
+  rating     Int      @default(5)
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  worker   User @relation("WorkerReviews", fields: [workerId], references: [id])
+  customer User @relation("CustomerReviews", fields: [customerId], references: [id])
+}
